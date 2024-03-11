@@ -15,7 +15,7 @@ const { isAuthenticated, authorized } = require("../middlewares/authenticate");
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, path.join(__dirname, "..", "uploads/user"));
+      cb(null, path.join(__dirname, "..", "uploads/product"));
     },
     filename: (req, file, cb) => {
       cb(null, file.originalname);
