@@ -2,6 +2,7 @@ const Products = require("../models/Products");
 const ErrorHandler = require("../utils/ErrorHandler");
 const cathAsynError = require("../middlewares/catchAsyncError");
 const ApiFeatures = require("../utils/apiFeatures");
+const mongoose = require("mongoose");
 
 //Get-all products
 exports.getProducts = cathAsynError(async (req, res, next) => {
@@ -42,10 +43,59 @@ exports.getSingleProduct = cathAsynError(async (req, res, next) => {
   });
 });
 
+//create review
+exports.createReview = cathAsynError(async (req, res, next) => {
+  const { productId, rating, comment } = req.body;
+
+  const review = {
+    user: req.user.id,
+    rating,
+    comment,
+  };
+
+  //find product
+  const product = await Products.findById(productId);
+
+  //find existing review by the user
+  const isReviewed = product.reviews.find((review) => {
+    return review.user.toString() == req.user.id.toString();
+  });
+
+  if (isReviewed) {
+    //updating review if exist
+
+    product.reviews.map((review) => {
+      if (review.user.toString() == req.user.id) {
+        review.comment = comment;
+        review.rating = rating;
+      }
+    });
+  } else {
+    //creating new review
+    product.reviews.push(review);
+    product.numOfReviews = product.reviews.length;
+  }
+
+  //calculating average for rating
+  const avgCalc =
+    product.reviews.reduce((acc, review) => {
+      return review.rating + acc;
+    }, 0) / product.reviews.length;
+  console.log("avgCalc==>", avgCalc);
+  product.ratings = isNaN(avgCalc) ? 0 : avgCalc;
+
+  await product.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    success: true,
+    product,
+  });
+});
 //Admin Routes
 
 //Create Product - /api/v1/product/new
 exports.newProduct = cathAsynError(async (req, res, next) => {
+  console.log("Files==>", req.file);
   let images = [];
   let BASE_URL = process.env.BACKEND_URL;
   if (process.env.NODE_ENV === "production") {
@@ -131,5 +181,60 @@ exports.getAdminProducts = cathAsynError(async (req, res, next) => {
   res.status(200).send({
     success: true,
     products,
+  });
+});
+
+//Deleting review
+exports.deleteReview = cathAsynError(async (req, res, next) => {
+  // const reviewid = req.params.id;
+  // const productId = req.params.productId;
+  if (
+    !mongoose.isValidObjectId(req.params.id) ||
+    !mongoose.isValidObjectId(req.params.productId)
+  ) {
+    // Handle invalid ObjectId
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid reviewId or productId" });
+  }
+  console.log(req.params.id, req.params.productId);
+  const product = await Products.findById(req.params.productId);
+
+  const reviews = product.reviews.filter((review) => {
+    return review._id.toString() !== req.params.id.toString();
+  });
+
+  //number of reviews
+
+  const numOfReviews = reviews.length;
+
+  //finding the average with the filtered reviews
+
+  let ratings =
+    reviews.reduce((acc, review) => {
+      return review.rating + acc;
+    }, 0) / reviews.length;
+  ratings = isNaN(ratings) ? 0 : ratings;
+
+  await Products.findByIdAndUpdate(req.params.productId, {
+    reviews,
+    numOfReviews,
+    ratings,
+  });
+
+  res.status(200).json({
+    success: true,
+  });
+});
+
+//Get review
+exports.getAllReviews = cathAsynError(async (req, res, next) => {
+  const product = await Products.findById(req.params.productId).populate(
+    "reviews.user",
+    "name email "
+  );
+  res.status(200).json({
+    success: true,
+    reviews: product.reviews,
   });
 });

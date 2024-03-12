@@ -13,9 +13,11 @@ const {
   deleteuser,
 } = require("../controllers/userControllers");
 const { isAuthenticated, authorized } = require("../middlewares/authenticate");
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
+      console.log("File==>", file);
       cb(null, path.join(__dirname, "..", "uploads/user"));
     },
     filename: (req, file, cb) => {

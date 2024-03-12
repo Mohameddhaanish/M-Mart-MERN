@@ -4,6 +4,7 @@ const User = require("../models/Users");
 const jwt = require("jsonwebtoken");
 exports.isAuthenticated = catchAsyncError(async (req, res, next) => {
   const { token } = req.cookies;
+  console.log(token && "isAuthenticated");
   if (!token) {
     return next(new ErrorHandler("Login first to handle this source"), 401);
   }
@@ -17,6 +18,7 @@ exports.authorized = (...roles) => {
     if (!roles.includes(req.user.role)) {
       return next(new ErrorHandler("Only admin has access", 401));
     }
+    console.log("isAuthorized");
     next();
   };
 };
